@@ -17,44 +17,41 @@ public class CommandController {
     public static final String ANALYZED_FB_TABLE = "analyzed_fb_posts";
     private final DbService dbService;
 
-    public CommandController() {
-        this.dbService = new DbService(); //"localhost", 5432
+    public CommandController(DbService dbService) {
+        this.dbService = dbService;
     }
 
     @Post("/AnalyzeSocialMention")
     @Produces(MediaType.TEXT_PLAIN)
     public String analyze(@Body SocialMention socialMention) {
-        // Functional Core (pure functions)
+        // Lógica funcional pura
         var result = analyzeSocialMention(socialMention);
 
-        // Imperative Shell (side effects)
+        // Shell imperativa para I/O
         result.getDbOperations().forEach(op -> {
             if (op.table.equals(ANALYZED_FB_TABLE)) {
-                dbService.insertFBPost().accept(op);  // Using HOF for database insert
+                dbService.insertFBPost().accept(op.message, op.score);  // HOF para FB
             } else {
-                dbService.insertTweet().accept(op);  // Using HOF for database insert
+                dbService.insertTweet().accept(op.message, op.score);    // HOF para Tweet
             }
         });
+
         return result.riskLevel;
     }
 
-    // Pure function for analyzing social mention
+    // Función pura para analizar la mención social
     private AnalysisResult analyzeSocialMention(SocialMention socialMention) {
         boolean isFacebook = socialMention.facebookAccount() != null;
         boolean isTweeter = !isFacebook && socialMention.tweeterAccount() != null;
 
-        // Message building (functional approach)
         String message = buildMessage(socialMention, isFacebook);
 
-        // Scores calculation
         double facebookScore = isFacebook ? calculateFacebookScore(message, socialMention) : 0;
         double tweeterScore = isTweeter ? calculateTweeterScore(message, socialMention) : 0;
 
-        // Risk assessment
         String riskLevel = determineRiskLevel(isFacebook, isTweeter, facebookScore, tweeterScore);
 
-        // Prepare database operations as data
-        List<DbOperation> dbOperations = prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, socialMention, message);
+        List<DbOperation> dbOperations = prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, message);
 
         return new AnalysisResult(riskLevel, dbOperations);
     }
@@ -89,20 +86,18 @@ public class CommandController {
         return "Error, Tweeter or Facebook account must be present";
     }
 
-    private List<DbOperation> prepareDbOperations(
-            boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore,
-            SocialMention socialMention, String message) {
+    private List<DbOperation> prepareDbOperations(boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore, String message) {
         List<DbOperation> ops = new ArrayList<>();
         if (isFacebook) {
-            ops.add(new DbOperation(ANALYZED_FB_TABLE, facebookScore, message, socialMention.facebookAccount()));
+            ops.add(new DbOperation(ANALYZED_FB_TABLE, facebookScore, message));
         }
         if (isTweeter) {
-            ops.add(new DbOperation(ANALYZED_TWEETS_TABLE, tweeterScore, message, socialMention.tweeterAccount()));
+            ops.add(new DbOperation(ANALYZED_TWEETS_TABLE, tweeterScore, message));
         }
         return ops;
     }
 
-    // Encapsulating analysis result
+    // Encapsulando el resultado del análisis
     static class AnalysisResult {
         String riskLevel;
         List<DbOperation> dbOperations;
@@ -117,18 +112,16 @@ public class CommandController {
         }
     }
 
-    // Encapsulating database operations as pure data
+    // Encapsulando las operaciones de base de datos como datos
     static class DbOperation {
         String table;
         double score;
         String message;
-        String accountInfo;
 
-        DbOperation(String table, double score, String message, String accountInfo) {
+        DbOperation(String table, double score, String message) {
             this.table = table;
             this.score = score;
             this.message = message;
-            this.accountInfo = accountInfo;
         }
     }
 }
