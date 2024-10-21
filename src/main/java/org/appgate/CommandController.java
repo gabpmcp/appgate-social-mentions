@@ -12,6 +12,8 @@ import org.appgate.services.DbService;
 
 import io.vavr.collection.List;
 
+import static org.appgate.util.Utils.getValue;
+
 @Controller
 public class CommandController {
     public static final String ANALYZED_TWEETS_TABLE = "analyzed_tweets";
@@ -25,22 +27,23 @@ public class CommandController {
         Map<String, Object> result = analyzeSocialMention(socialMention);
 
         // Shell imperativa para I/O
-        List<Map<String, Object>> dbOperations = (List<Map<String, Object>>) result.get("dbOperations").get();
+        List<Map<String, Object>> dbOperations = getValue(result, "dbOperations", List.empty());
         dbOperations.forEach(op -> {
-            if (op.get("table").get().equals(ANALYZED_FB_TABLE)) {
+            String table = getValue(op, "table", "");
+            if (table.equals(ANALYZED_FB_TABLE)) {
                 dbService.insertFBPost().accept(op);  // HOF para FB
             } else {
                 dbService.insertTweet().accept(op);    // HOF para Tweet
             }
         });
 
-        return result.get("riskLevel").get().toString();
+        return getValue(result, "riskLevel", "Error");
     }
 
     // Función pura para analizar la mención social
+    private Map<String, Object> analyzeSocialMention(SocialMention socialMention) {
         boolean isFacebook = socialMention.facebookAccount() != null;
         boolean isTweeter = !isFacebook && socialMention.tweeterAccount() != null;
-    private Map<String, Object> analyzeSocialMention(SocialMention socialMention) {
 
         String message = buildMessage(socialMention, isFacebook);
 
