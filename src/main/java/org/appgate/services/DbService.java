@@ -2,11 +2,11 @@ package org.appgate.services;
 
 import java.util.function.Consumer;
 
-public class DBService {
+public class DbService {
     private final String host;
     private final int port;
 
-    public DBService(String host, int port) {
+    public DbService(String host, int port) {
         this.host = host;
         this.port = port;
     }

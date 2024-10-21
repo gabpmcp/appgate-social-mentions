@@ -6,9 +6,8 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Produces;
 import org.appgate.models.SocialMention;
-import org.appgate.services.DBService;
+import org.appgate.services.DbService;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,7 +15,11 @@ import java.util.List;
 public class CommandController {
     public static final String ANALYZED_TWEETS_TABLE = "analyzed_tweets";
     public static final String ANALYZED_FB_TABLE = "analyzed_fb_posts";
-    private final DBService dbService = new DBService("localhost", 5432);
+    private final DbService dbService;
+
+    public CommandController() {
+        this.dbService = new DbService("localhost", 5432);
+    }
 
     @Post("/AnalyzeSocialMention")
     @Produces(MediaType.TEXT_PLAIN)
@@ -25,7 +28,13 @@ public class CommandController {
         var result = analyzeSocialMention(socialMention);
 
         // Imperative Shell (side effects)
-        result.getDbOperations().forEach(op -> dbService.insert(op.table, op.score, op.message, op.accountInfo));
+        result.getDbOperations().forEach(op -> {
+            if (op.table.equals(ANALYZED_FB_TABLE)) {
+                dbService.insertFBPost().accept(op);  // Using HOF for database insert
+            } else {
+                dbService.insertTweet().accept(op);  // Using HOF for database insert
+            }
+        });
         return result.riskLevel;
     }
 
@@ -60,7 +69,7 @@ public class CommandController {
         double commentsScore = FacebookAnalyzer.calculateFacebookCommentsScore(
                 message.substring(message.indexOf("comments:"))
         );
-        return commentsScore < 50 ? -100 : FacebookAnalyzer.analyzePost(message, socialMention.getFacebookAccount());
+        return commentsScore < 50 ? -100 : FacebookAnalyzer.analyzePost(message, socialMention.facebookAccount());
     }
 
     private double calculateTweeterScore(String message, SocialMention socialMention) {
