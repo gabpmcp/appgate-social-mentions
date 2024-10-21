@@ -1,13 +1,15 @@
 package org.appgate.util;
 
-import io.vavr.Function1;
 import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import io.vavr.collection.HashMap;
-import org.appgate.services.DbService;
+import org.appgate.IO.DbHandler;
+import org.appgate.domain.Transformations;
 
-import java.io.Serializable;
 import java.util.LinkedHashMap;
+
+import static org.appgate.IO.DbHandler.*;
+import static org.appgate.domain.Transformations.*;
 
 public class Utils {
 
@@ -40,16 +42,13 @@ public class Utils {
     // Función para crear el loader de dependencias, ahora usando la interfaz Dependency
     public static Map<String, Dependency> createDbLoader() {
         return HashMap.of(
-                "insertFBPost", DbService.insertFBPost(map -> {
+                "insertFBPost", insertFBPost(map -> {
                     // Lógica pura para insertar en Facebook
                     System.out.println("Inserting into Facebook DB with data: " + map);
                     return map;
                 }),
-                "insertTweet", DbService.insertTweet(map -> {
-                    // Lógica pura para insertar en Tweets
-                    System.out.println("Inserting into Tweets DB with data: " + map);
-                    return map;
-                })
+                "insertTweet", persistOperation.apply(insertTweetDumb()),
+                "insertTweetTest", map -> Transformations.createDbOperation("mockedTable", "mockedMessage", "mockedAccount", 0.0)
         );
     }
 }
