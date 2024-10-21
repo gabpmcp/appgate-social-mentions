@@ -5,42 +5,41 @@ import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Produces;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.Map;
 import org.appgate.models.SocialMention;
 import org.appgate.services.DbService;
 
-import java.util.ArrayList;
-import java.util.List;
+import io.vavr.collection.List;
 
 @Controller
 public class CommandController {
     public static final String ANALYZED_TWEETS_TABLE = "analyzed_tweets";
     public static final String ANALYZED_FB_TABLE = "analyzed_fb_posts";
-    private final DbService dbService;
-
-    public CommandController(DbService dbService) {
-        this.dbService = dbService;
-    }
+    private final DbService dbService = new DbService();
 
     @Post("/AnalyzeSocialMention")
     @Produces(MediaType.TEXT_PLAIN)
     public String analyze(@Body SocialMention socialMention) {
         // Lógica funcional pura
-        var result = analyzeSocialMention(socialMention);
+        Tuple2<String, List<Tuple2<Map<String, Object>, Double>>> result = analyzeSocialMention(socialMention);
 
         // Shell imperativa para I/O
-        result.getDbOperations().forEach(op -> {
-            if (op.table.equals(ANALYZED_FB_TABLE)) {
-                dbService.insertFBPost().accept(op.message, op.score);  // HOF para FB
+        result._2.forEach(op -> {
+            if (op._1.get("table").equals(ANALYZED_FB_TABLE)) {
+                dbService.insertFBPost().accept(op._1, op._2);  // HOF para FB
             } else {
-                dbService.insertTweet().accept(op.message, op.score);    // HOF para Tweet
+                dbService.insertTweet().accept(op._1, op._2);    // HOF para Tweet
             }
         });
 
-        return result.riskLevel;
+        return result._1;
     }
 
     // Función pura para analizar la mención social
-    private AnalysisResult analyzeSocialMention(SocialMention socialMention) {
+    private Tuple2<String, List<Tuple2<Map<String, Object>, Double>>> analyzeSocialMention(SocialMention socialMention) {
         boolean isFacebook = socialMention.facebookAccount() != null;
         boolean isTweeter = !isFacebook && socialMention.tweeterAccount() != null;
 
@@ -51,9 +50,9 @@ public class CommandController {
 
         String riskLevel = determineRiskLevel(isFacebook, isTweeter, facebookScore, tweeterScore);
 
-        List<DbOperation> dbOperations = prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, message);
+        List<Tuple2<Map<String, Object>, Double>> dbOperations = prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, message, socialMention);
 
-        return new AnalysisResult(riskLevel, dbOperations);
+        return Tuple.of(riskLevel, dbOperations);
     }
 
     private String buildMessage(SocialMention socialMention, boolean isFacebook) {
@@ -86,42 +85,26 @@ public class CommandController {
         return "Error, Tweeter or Facebook account must be present";
     }
 
-    private List<DbOperation> prepareDbOperations(boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore, String message) {
-        List<DbOperation> ops = new ArrayList<>();
+    private List<Tuple2<Map<String, Object>, Double>> prepareDbOperations(
+            boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore,
+            String message, SocialMention socialMention) {
+        List<Tuple2<Map<String, Object>, Double>> ops = List.empty();
         if (isFacebook) {
-            ops.add(new DbOperation(ANALYZED_FB_TABLE, facebookScore, message));
+            Map<String, Object> fbData = HashMap.of(
+                    "table", ANALYZED_FB_TABLE,
+                    "message", message,
+                    "account", socialMention.facebookAccount()
+            );
+            ops = ops.append(Tuple.of(fbData, facebookScore));
         }
         if (isTweeter) {
-            ops.add(new DbOperation(ANALYZED_TWEETS_TABLE, tweeterScore, message));
+            Map<String, Object> tweetData = HashMap.of(
+                    "table", ANALYZED_TWEETS_TABLE,
+                    "message", message,
+                    "account", socialMention.tweeterAccount()
+            );
+            ops = ops.append(Tuple.of(tweetData, tweeterScore));
         }
         return ops;
-    }
-
-    // Encapsulando el resultado del análisis
-    static class AnalysisResult {
-        String riskLevel;
-        List<DbOperation> dbOperations;
-
-        AnalysisResult(String riskLevel, List<DbOperation> dbOperations) {
-            this.riskLevel = riskLevel;
-            this.dbOperations = dbOperations;
-        }
-
-        List<DbOperation> getDbOperations() {
-            return dbOperations;
-        }
-    }
-
-    // Encapsulando las operaciones de base de datos como datos
-    static class DbOperation {
-        String table;
-        double score;
-        String message;
-
-        DbOperation(String table, double score, String message) {
-            this.table = table;
-            this.score = score;
-            this.message = message;
-        }
     }
 }

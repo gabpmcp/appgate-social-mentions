@@ -1,24 +1,25 @@
 package org.appgate.services;
 
+import io.vavr.collection.Map;
+
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 public class DbService {
-    // Function for inserting a Facebook post (HOF with primitive types)
-    public BiConsumer<String, Double> insertFBPost() {
-        return (message, score) -> {
+    // Function for inserting a Facebook post (HOF with dynamic types using Vavr)
+    public BiConsumer<Map<String, Object>, Double> insertFBPost() {
+        return (data, score) -> {
             // Simulación de inserción en la base de datos
-            System.out.println("Inserting FB post with message: " + message + " and score: " + score);
-            // Código real de inserción aquí, usando primitivos
+            System.out.println("Inserting FB post with data: " + data + " and score: " + score);
+            // Lógica real de inserción
         };
     }
 
-    // Function for inserting a Tweet (HOF with primitive types)
-    public BiConsumer<String, Double> insertTweet() {
-        return (message, score) -> {
+    // Function for inserting a Tweet (HOF with dynamic types using Vavr)
+    public BiConsumer<Map<String, Object>, Double> insertTweet() {
+        return (data, score) -> {
             // Simulación de inserción en la base de datos
-            System.out.println("Inserting Tweet with message: " + message + " and score: " + score);
-            // Código real de inserción aquí, usando primitivos
+            System.out.println("Inserting Tweet with data: " + data + " and score: " + score);
+            // Lógica real de inserción
         };
     }
 }
