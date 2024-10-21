@@ -18,7 +18,7 @@ public class CommandController {
     private final DbService dbService;
 
     public CommandController() {
-        this.dbService = new DbService("localhost", 5432);
+        this.dbService = new DbService(); //"localhost", 5432
     }
 
     @Post("/AnalyzeSocialMention")

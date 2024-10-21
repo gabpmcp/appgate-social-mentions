@@ -1,31 +1,24 @@
 package org.appgate.services;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class DbService {
-    private final String host;
-    private final int port;
-
-    public DbService(String host, int port) {
-        this.host = host;
-        this.port = port;
-    }
-
-    // Inserting Facebook post using HOF
-    public Consumer<DbOperation> insertFBPost() {
-        return operation -> {
-            // Aquí puedes implementar la lógica de interacción con tu base de datos actual (PostgreSQL, MongoDB, etc.)
-            System.out.println("Inserting into FB table: " + operation.table + " with score " + operation.score);
-            // Código real de inserción aquí
+    // Function for inserting a Facebook post (HOF with primitive types)
+    public BiConsumer<String, Double> insertFBPost() {
+        return (message, score) -> {
+            // Simulación de inserción en la base de datos
+            System.out.println("Inserting FB post with message: " + message + " and score: " + score);
+            // Código real de inserción aquí, usando primitivos
         };
     }
 
-    // Inserting Tweet using HOF
-    public Consumer<DbOperation> insertTweet() {
-        return operation -> {
-            // Aquí puedes implementar la lógica de interacción con tu base de datos actual
-            System.out.println("Inserting into Tweets table: " + operation.table + " with score " + operation.score);
-            // Código real de inserción aquí
+    // Function for inserting a Tweet (HOF with primitive types)
+    public BiConsumer<String, Double> insertTweet() {
+        return (message, score) -> {
+            // Simulación de inserción en la base de datos
+            System.out.println("Inserting Tweet with message: " + message + " and score: " + score);
+            // Código real de inserción aquí, usando primitivos
         };
     }
 }
