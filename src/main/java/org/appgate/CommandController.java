@@ -13,6 +13,7 @@ import org.appgate.services.DbService;
 
 import io.vavr.collection.List;
 import org.appgate.util.Constants;
+import org.appgate.util.Dependency;
 
 import java.io.Serializable;
 
@@ -24,7 +25,7 @@ import static org.appgate.util.Utils.getValue;
 public class CommandController {
 
     // Inicialización del mapa de dependencias para DbService
-    private final Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> depsLoader = createDbLoader();
+    private final Map<String, Dependency> depsLoader = createDbLoader();
     private final DbService dbService = new DbService(depsLoader);
 
     @Post("/AnalyzeSocialMention")

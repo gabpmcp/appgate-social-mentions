@@ -37,8 +37,8 @@ public class Utils {
                         : Option.of(v).flatMap(subMap -> (subMap instanceof HashMap<?,?> s) ? traverse((Map<String, Object>) s, keys, index + 1) : traverse(HashMap.ofAll((LinkedHashMap<String, Object>) subMap), keys, index + 1)));
     }
 
-    // Función para crear el loader de dependencias, ahora usando funciones puras
-    public static Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> createDbLoader() {
+    // Función para crear el loader de dependencias, ahora usando la interfaz Dependency
+    public static Map<String, Dependency> createDbLoader() {
         return HashMap.of(
                 "insertFBPost", DbService.insertFBPost(map -> {
                     // Lógica pura para insertar en Facebook
