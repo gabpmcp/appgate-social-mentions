@@ -44,9 +44,9 @@ public class CommandController {
             );
 
             if (table.equals(ANALYZED_FB_TABLE)) {
-                dbService.insertFBPost().apply(operationData);
+                depsLoader.get("insertFBPost").get().apply(operationData);
             } else {
-                dbService.insertTweet().apply(operationData);
+                depsLoader.get("insertTweet").get().apply(operationData);
             }
         });
 

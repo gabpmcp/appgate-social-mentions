@@ -4,6 +4,7 @@ import io.vavr.Function1;
 import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import io.vavr.collection.HashMap;
+import org.appgate.services.DbService;
 
 import java.io.Serializable;
 import java.util.LinkedHashMap;
@@ -36,19 +37,19 @@ public class Utils {
                         : Option.of(v).flatMap(subMap -> (subMap instanceof HashMap<?,?> s) ? traverse((Map<String, Object>) s, keys, index + 1) : traverse(HashMap.ofAll((LinkedHashMap<String, Object>) subMap), keys, index + 1)));
     }
 
-    // Función para crear el loader de dependencias
+    // Función para crear el loader de dependencias, ahora usando funciones puras
     public static Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> createDbLoader() {
         return HashMap.of(
-                "insertFBPost", map -> {
-                    // Lógica para insertar en la tabla de Facebook
+                "insertFBPost", DbService.insertFBPost(map -> {
+                    // Lógica pura para insertar en Facebook
                     System.out.println("Inserting into Facebook DB with data: " + map);
                     return map;
-                },
-                "insertTweet", map -> {
-                    // Lógica para insertar en la tabla de Tweets
+                }),
+                "insertTweet", DbService.insertTweet(map -> {
+                    // Lógica pura para insertar en Tweets
                     System.out.println("Inserting into Tweets DB with data: " + map);
                     return map;
-                }
+                })
         );
     }
 }
