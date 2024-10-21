@@ -8,6 +8,7 @@ import io.micronaut.http.annotation.Produces;
 import io.vavr.Function1;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
+import org.appgate.domain.Transformations;
 import org.appgate.models.SocialMention;
 import org.appgate.services.DbService;
 
@@ -59,75 +60,18 @@ public class CommandController {
         boolean isFacebook = socialMention.facebookAccount() != null;
         boolean isTweeter = !isFacebook && socialMention.tweeterAccount() != null;
 
-        String message = buildMessage(socialMention, isFacebook);
+        String message = Transformations.buildMessage(socialMention, isFacebook);
 
-        double facebookScore = isFacebook ? calculateFacebookScore(message, socialMention) : 0;
-        double tweeterScore = isTweeter ? calculateTweeterScore(message, socialMention) : 0;
+        double facebookScore = isFacebook ? Transformations.calculateFacebookScore(message, socialMention) : 0;
+        double tweeterScore = isTweeter ? Transformations.calculateTweeterScore(message, socialMention) : 0;
 
-        String riskLevel = determineRiskLevel(isFacebook, isTweeter, facebookScore, tweeterScore);
+        String riskLevel = Transformations.determineRiskLevel(isFacebook, isTweeter, facebookScore, tweeterScore);
 
-        List<Map<String, Object>> dbOperations = prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, message, socialMention);
+        List<Map<String, Object>> dbOperations = Transformations.prepareDbOperations(isFacebook, isTweeter, facebookScore, tweeterScore, message, socialMention);
 
         return HashMap.of(
                 "riskLevel", riskLevel,
                 "dbOperations", dbOperations
-        );
-    }
-
-    private String buildMessage(SocialMention socialMention, boolean isFacebook) {
-        return (isFacebook ? "facebookMessage: " : "tweeterMessage: ") +
-                socialMention.message() +
-                (isFacebook ? " || comments: " + String.join(" ", socialMention.facebookComments()) : "");
-    }
-
-    private double calculateFacebookScore(String message, SocialMention socialMention) {
-        double commentsScore = FacebookAnalyzer.calculateFacebookCommentsScore(
-                message.substring(message.indexOf("comments:"))
-        );
-        return commentsScore < 50 ? Constants.FACEBOOK_SCORE_HIGH_RISK : FacebookAnalyzer.analyzePost(message, socialMention.facebookAccount());
-    }
-
-    private double calculateTweeterScore(String message, SocialMention socialMention) {
-        return TweeterAnalyzer.analyzeTweet(
-                message, socialMention.tweeterUrl(), socialMention.tweeterAccount()
-        );
-    }
-
-    private String determineRiskLevel(boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore) {
-        if (isFacebook) {
-            return facebookScore == Constants.FACEBOOK_SCORE_HIGH_RISK ? "HIGH_RISK"
-                    : (facebookScore < Constants.FACEBOOK_SCORE_MEDIUM_RISK ? "MEDIUM_RISK" : "LOW_RISK");
-        } else if (isTweeter) {
-            return tweeterScore >= Constants.TWEETER_SCORE_HIGH_RISK && tweeterScore <= -0.5 ? "HIGH_RISK"
-                    : (tweeterScore < Constants.TWEETER_SCORE_MEDIUM_RISK ? "MEDIUM_RISK" : "LOW_RISK");
-        }
-        return "Error, Tweeter or Facebook account must be present";
-    }
-
-    // Función genérica para crear operaciones de base de datos
-    private List<Map<String, Object>> prepareDbOperations(
-            boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore,
-            String message, SocialMention socialMention) {
-
-        List<Map<String, Object>> ops = List.empty();
-
-        if (isFacebook) {
-            ops = ops.append(createDbOperation(Constants.ANALYZED_FB_TABLE, message, socialMention.facebookAccount(), facebookScore));
-        }
-        if (isTweeter) {
-            ops = ops.append(createDbOperation(Constants.ANALYZED_TWEETS_TABLE, message, socialMention.tweeterAccount(), tweeterScore));
-        }
-
-        return ops;
-    }
-
-    // Función genérica para construir las operaciones de base de datos
-    private Map<String, Object> createDbOperation(String table, String message, String account, double score) {
-        return HashMap.of(
-                "table", table,
-                "message", message,
-                "account", account,
-                "score", score
         );
     }
 }

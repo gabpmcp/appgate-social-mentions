@@ -2,8 +2,7 @@ package org.appgate.util;
 
 import io.vavr.collection.Map;
 import java.io.Serializable;
+import java.util.function.Function;
 
-@FunctionalInterface
-public interface Dependency {
-    Map<String, Serializable> apply(Map<String, Serializable> input);
+public interface Dependency extends Function<Map<String, Serializable>, Map<String, Serializable>> {
 }
