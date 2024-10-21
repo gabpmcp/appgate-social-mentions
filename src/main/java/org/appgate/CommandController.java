@@ -5,20 +5,27 @@ import io.micronaut.http.annotation.Body;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Post;
 import io.micronaut.http.annotation.Produces;
+import io.vavr.Function1;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
 import org.appgate.models.SocialMention;
 import org.appgate.services.DbService;
 
 import io.vavr.collection.List;
+import org.appgate.util.Constants;
 
+import java.io.Serializable;
+
+import static org.appgate.util.Constants.ANALYZED_FB_TABLE;
+import static org.appgate.util.Utils.*;
 import static org.appgate.util.Utils.getValue;
 
 @Controller
 public class CommandController {
-    public static final String ANALYZED_TWEETS_TABLE = "analyzed_tweets";
-    public static final String ANALYZED_FB_TABLE = "analyzed_fb_posts";
-    private final DbService dbService = new DbService();
+
+    // Inicialización del mapa de dependencias para DbService
+    private final Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> depsLoader = createDbLoader();
+    private final DbService dbService = new DbService(depsLoader);
 
     @Post("/AnalyzeSocialMention")
     @Produces(MediaType.TEXT_PLAIN)
@@ -30,10 +37,16 @@ public class CommandController {
         List<Map<String, Object>> dbOperations = getValue(result, "dbOperations", List.empty());
         dbOperations.forEach(op -> {
             String table = getValue(op, "table", "");
+            Map<String, Serializable> operationData = HashMap.of(
+                    "table", getValue(op, "table", ""),
+                    "message", getValue(op, "message", ""),
+                    "account", getValue(op, "account", "")
+            );
+
             if (table.equals(ANALYZED_FB_TABLE)) {
-                dbService.insertFBPost().accept(op);  // HOF para FB
+                dbService.insertFBPost().apply(operationData);
             } else {
-                dbService.insertTweet().accept(op);    // HOF para Tweet
+                dbService.insertTweet().apply(operationData);
             }
         });
 
@@ -70,7 +83,7 @@ public class CommandController {
         double commentsScore = FacebookAnalyzer.calculateFacebookCommentsScore(
                 message.substring(message.indexOf("comments:"))
         );
-        return commentsScore < 50 ? -100 : FacebookAnalyzer.analyzePost(message, socialMention.facebookAccount());
+        return commentsScore < 50 ? Constants.FACEBOOK_SCORE_HIGH_RISK : FacebookAnalyzer.analyzePost(message, socialMention.facebookAccount());
     }
 
     private double calculateTweeterScore(String message, SocialMention socialMention) {
@@ -81,11 +94,11 @@ public class CommandController {
 
     private String determineRiskLevel(boolean isFacebook, boolean isTweeter, double facebookScore, double tweeterScore) {
         if (isFacebook) {
-            return facebookScore == -100 ? "HIGH_RISK"
-                    : (facebookScore < 50 ? "MEDIUM_RISK" : "LOW_RISK");
+            return facebookScore == Constants.FACEBOOK_SCORE_HIGH_RISK ? "HIGH_RISK"
+                    : (facebookScore < Constants.FACEBOOK_SCORE_MEDIUM_RISK ? "MEDIUM_RISK" : "LOW_RISK");
         } else if (isTweeter) {
-            return tweeterScore >= -1 && tweeterScore <= -0.5 ? "HIGH_RISK"
-                    : (tweeterScore < 0.7 ? "MEDIUM_RISK" : "LOW_RISK");
+            return tweeterScore >= Constants.TWEETER_SCORE_HIGH_RISK && tweeterScore <= -0.5 ? "HIGH_RISK"
+                    : (tweeterScore < Constants.TWEETER_SCORE_MEDIUM_RISK ? "MEDIUM_RISK" : "LOW_RISK");
         }
         return "Error, Tweeter or Facebook account must be present";
     }
@@ -98,10 +111,10 @@ public class CommandController {
         List<Map<String, Object>> ops = List.empty();
 
         if (isFacebook) {
-            ops = ops.append(createDbOperation(ANALYZED_FB_TABLE, message, socialMention.facebookAccount(), facebookScore));
+            ops = ops.append(createDbOperation(Constants.ANALYZED_FB_TABLE, message, socialMention.facebookAccount(), facebookScore));
         }
         if (isTweeter) {
-            ops = ops.append(createDbOperation(ANALYZED_TWEETS_TABLE, message, socialMention.tweeterAccount(), tweeterScore));
+            ops = ops.append(createDbOperation(Constants.ANALYZED_TWEETS_TABLE, message, socialMention.tweeterAccount(), tweeterScore));
         }
 
         return ops;

@@ -1,23 +1,25 @@
 package org.appgate.services;
 
+import io.vavr.Function1;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
 
-import java.util.function.Consumer;
+import java.io.Serializable;
 
 public class DbService {
-    // Function for inserting a Facebook post (HOF with Map)
-    public Consumer<Map<String, Object>> insertFBPost() {
-        return data -> {
-            System.out.println("Inserting FB post with data: " + data);
-            // Lógica real de inserción aquí
-        };
+    private final Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> depsLoader;
+
+    public DbService(Map<String, Function1<Map<String, Serializable>, Map<String, Serializable>>> depsLoader) {
+        this.depsLoader = depsLoader;
     }
 
-    // Function for inserting a Tweet (HOF with Map)
-    public Consumer<Map<String, Object>> insertTweet() {
-        return data -> {
-            System.out.println("Inserting Tweet with data: " + data);
-            // Lógica real de inserción aquí
-        };
+    // Function to insert Facebook posts (using dependencies)
+    public Function1<Map<String, Serializable>, Map<String, Serializable>> insertFBPost() {
+        return depsLoader.get("insertFBPost").getOrElse(HashMap.empty());
+    }
+
+    // Function to insert Tweets (using dependencies)
+    public Function1<Map<String, Serializable>, Map<String, Serializable>> insertTweet() {
+        return depsLoader.get("insertTweet").getOrElse(HashMap.empty());
     }
 }
